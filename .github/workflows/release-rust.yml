@@ -59,12 +59,22 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             rust/target
-          key: cargo-release-linux-${{ hashFiles('rust/Cargo.toml') }}
-          restore-keys: cargo-release-linux-
+          key: cargo-release-linux-v2-${{ hashFiles('rust/Cargo.toml') }}
+          restore-keys: cargo-release-linux-v2-
 
       - name: Build
         working-directory: rust
         run: cargo build --release
+
+      - name: Verify no dynamic lame/opus dependency
+        run: |
+          echo "=== Shared library dependencies ==="
+          ldd rust/target/release/qwen3-audio-api
+          if ldd rust/target/release/qwen3-audio-api | grep -qE 'libmp3lame|libopus'; then
+            echo "FAIL: binary dynamically links to lame or opus"
+            exit 1
+          fi
+          echo "PASS: lame and opus are statically linked"
 
       - name: Package archive
         run: |
@@ -104,8 +114,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             rust/target
-          key: cargo-release-macos-arm64-${{ hashFiles('rust/Cargo.toml') }}
-          restore-keys: cargo-release-macos-arm64-
+          key: cargo-release-macos-arm64-v2-${{ hashFiles('rust/Cargo.toml') }}
+          restore-keys: cargo-release-macos-arm64-v2-
 
       - name: Build with MLX backend
         working-directory: rust
@@ -114,6 +124,16 @@ jobs:
           LDFLAGS: "-L/opt/homebrew/lib"
           LIBRARY_PATH: "/opt/homebrew/lib"
         run: cargo build --release --no-default-features --features "mlx build-ffmpeg"
+
+      - name: Verify no dynamic lame/opus dependency
+        run: |
+          echo "=== Shared library dependencies ==="
+          otool -L rust/target/release/qwen3-audio-api
+          if otool -L rust/target/release/qwen3-audio-api | grep -qE 'libmp3lame|libopus'; then
+            echo "FAIL: binary dynamically links to lame or opus"
+            exit 1
+          fi
+          echo "PASS: lame and opus are statically linked"
 
       - name: Package archive
         run: |
